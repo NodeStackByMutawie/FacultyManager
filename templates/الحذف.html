@@ -1,0 +1,162 @@
+<!-- delete.html -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title> Delete Bage </title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #235a50, #c2c9e6);
+      margin: 20px;
+      direction: rtl;
+    }
+    .delete-container {
+      background: #f1f3f3;
+      max-width: 500px;
+      margin: auto;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    }
+    label, select, input {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    select, input[type=text] {
+      padding: 7px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #0c5f8b;
+      border: none;
+      color: white;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    button:hover {
+      background-color: #0069d9;
+    }
+    #deleteMessage {
+      margin-top: 10px;
+      color: #d9534f;
+    }
+    @media (max-width: 400px) {
+      .delete-container {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+    <!-- علشان اروح صفحة التحكم -->
+<button class="back-btn" onclick="window.location.href='C:/Users/user/Downloads/flask/templates/التحكم.html'">Admi dashboard</button>
+
+<style>
+  .back-btn {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    padding: 10px 18px;
+    background-color: #4c8a7a;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 16px;
+    width: auto;
+    height: auto;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: background-color 0.3s;
+    z-index: 10;
+  }
+  .back-btn:hover {
+    background-color: #2b5634;
+  }
+</style>
+  <div class="delete-container">
+    <h2> delete item</h2>
+    <label for="typeSelect"> Select item type </label>
+    <select id="typeSelect">
+      <option value="faculty">Doctor</option>
+      <option value="subject">Subject</option>
+      <option value="department">Department</option>
+      <option value="specialization">Specialization</option>
+    </select>
+
+    <label for="bySelect"> delete by</label>
+    <select id="bySelect">
+      <option value="id"> (ID)</option>
+      <option value="name">Name</option>
+    </select>
+
+    <label for="deleteValue">   Enter Name or ID:</label>
+    <input type="text" id="deleteValue" required>
+
+    <button id="deleteBtn">Submet delete </button>
+    <p id="deleteMessage"></p>
+  </div>
+
+  <script>
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      const type = document.getElementById('typeSelect').value;
+      const by = document.getElementById('bySelect').value;
+      const value = document.getElementById('deleteValue').value.trim();
+      const msgEl = document.getElementById('deleteMessage');
+      msgEl.style.color = '#d9534f';
+      msgEl.innerText = '';
+      if (!value) {
+        msgEl.innerText = 'يرجى إدخال قيمة للحذف.';
+        return;
+      }
+      try {
+        if (by === 'id') {
+          // حذف مباشر بالمعرف
+          const res = await fetch(/${type}/${value}, { method: 'DELETE' });
+          if (res.ok) {
+            msgEl.style.color = 'green';
+            msgEl.innerText = 'تم الحذف بنجاح.';
+          } else {
+            const errText = await res.text();
+            msgEl.innerText = 'خطأ: ' + (errText || res.statusText);
+          }
+        } else {
+          // البحث بالاسم أولاً للحصول على المعرف ثم الحذف
+          const searchRes = await fetch(/${type}/search, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: value })
+          });
+          if (!searchRes.ok) throw new Error('فشل في البحث بالاسم');
+          const results = await searchRes.json();
+          if (results.length === 0) {
+            throw new Error('لم يتم العثور على عنصر بالاسم المدخل');
+          }
+          const idToDelete = results[0].id;
+          const deleteRes = await fetch(/${type}/${idToDelete}, { method: 'DELETE' });
+          if (deleteRes.ok) {
+            msgEl.style.color = 'green';
+            msgEl.innerText = 'تم الحذف بنجاح.';
+          } else {
+            const errText = await deleteRes.text();
+            msgEl.innerText = 'خطأ: ' + errText;
+          }
+        }
+      } catch (err) {
+        msgEl.innerText = 'خطأ في العملية: ' + err.message;
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

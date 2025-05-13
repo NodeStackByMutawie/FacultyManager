@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>admin-dashboard</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #284f48, #2f3659);
+      margin: 20px;
+      direction: rtl;
+    }
+    h2 {
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 7px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: right;
+    }
+    table th {
+      background: #e9ecef;
+    }
+    form {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 6px 0 3px;
+      font-weight: bold;
+    }
+    input[type=text], input[type=number] {
+      width: 100%;
+      padding: 6px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 14px;
+      background-color: #22c7a0;
+      border: none;
+      color: white;
+      font-size: 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .delete-btn {
+      background-color: #dc3545;
+    }
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      padding: 10px 18px;
+      background-color: #4c8a7a;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      transition: background-color 0.3s;
+      z-index: 10;
+    }
+
+    .back-btn i {
+      margin-left: 8px;
+    }
+
+    .back-btn.search {
+      left: 190px;
+    }
+    .back-btn.delete {
+      left: 15px;
+    }
+    .back-btn.logout {
+      right: 15px;
+    }
+
+    .back-btn:hover {
+      background-color: #2b5634;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- زر البحث -->
+  <button class="back-btn search" onclick="window.location.href='C:/Users/user/Downloads/flask/templates/index.html'">
+    <i class="fas fa-search"></i> Search
+  </button>
+
+  <!-- زر الحذف -->
+  <button class="back-btn delete" onclick="window.location.href='C:/Users/user/Downloads/flask/templates/الحذف.html'">
+    <i class="fas fa-trash"></i> Page Delete
+  </button>
+
+  <!-- زر تسجيل الخروج -->
+  <button class="back-btn logout" onclick="logout()">
+    <i class="fas fa-sign-out-alt"></i> Logout
+  </button>
+
+  <div class="container">
+    <h2> admin-dashboard </h2>
+    <h3> List of Current Professors </h3>
+    <table id="doctorsTable">
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Departement</th><th>Subject</th><th> Specialization</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>Add new dodtor</h3>
+    <form id="addDoctorForm">
+      <label for="addName">Name:</label>
+      <input type="text" id="addName" required>
+      <label for="addDept">Departement:</label>
+      <input type="text" id="addDept" required>
+      <label for="addSubject">Subject:</label>
+      <input type="text" id="addSubject" required>
+      <label for="addSpec">Specialization:</label>
+      <input type="text" id="addSpec" required>
+      <button type="submit">add</button>
+    </form>
+
+    <h3>Delete Doctor By (ID)</h3>
+    <form id="deleteDoctorForm">
+      <label for="deleteId">ID Doctor :</label>
+      <input type="number" id="deleteId" required>
+      <button type="submit" class="delete-btn">Delete</button>
+    </form>
+
+    <p id="adminMessage"></p>
+  </div>
+
+  <script>
+    function logout() {
+      window.location.href = "/logout";
+    }
+
+    async function loadDoctors() {
+      try {
+        const res = await fetch('/faculty');
+        if (!res.ok) throw new Error('فشل جلب الداتا');
+        const doctors = await res.json();
+        const tbody = document.querySelector('#doctorsTable tbody');
+        tbody.innerHTML = '';
+        doctors.forEach(doc => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${doc.id || ''}</td>
+            <td>${doc.name || ''}</td>
+            <td>${doc.department || ''}</td>
+            <td>${doc.subject || ''}</td>
+            <td>${doc.specialization || ''}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (err) {
+        document.getElementById('adminMessage').innerText = 'خطأ في تحميل البيانات.';
+        console.error(err);
+      }
+    }
+    loadDoctors();
+
+    document.getElementById('addDoctorForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('addName').value;
+      const department = document.getElementById('addDept').value;
+      const subject = document.getElementById('addSubject').value;
+      const specialization = document.getElementById('addSpec').value;
+      try {
+        const res = await fetch('/faculty', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, department, subject, specialization })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('adminMessage').style.color = 'green';
+          document.getElementById('adminMessage').innerText = 'تمت إضافة الدكتور بنجاح.';
+          loadDoctors();
+        } else {
+          document.getElementById('adminMessage').innerText = 'خطأ: ' + (data.message || 'فشل في الإضافة.');
+        }
+      } catch (err) {
+        document.getElementById('adminMessage').innerText = 'حدث خطأ أثناء الإضافة.';
+        console.error(err);
+      }
+    });
+
+    document.getElementById('deleteDoctorForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const id = document.getElementById('deleteId').value;
+      if (!id) return;
+      try {
+        const res = await fetch(/faculty/${id}, { method: 'DELETE' });
+        if (res.ok) {
+          document.getElementById('adminMessage').style.color = 'green';
+          document.getElementById('adminMessage').innerText = 'تم حذف الدكتور بنجاح.';
+          loadDoctors();
+        } else {
+          const errText = await res.text();
+          document.getElementById('adminMessage').innerText = 'خطأ: ' + errText;
+        }
+      } catch (err) {
+        document.getElementById('adminMessage').innerText = 'حدث خطأ أثناء الحذف.';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

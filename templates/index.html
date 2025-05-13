@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Faculty Directory</title>
+    <link rel="stylesheet" href="C:\Users\user\Downloads\flask\static\mian.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+      <!-- button log in -->
+<button class="back-btn" onclick="window.location.href='C:/Users/user/Downloads/flask/templates/login.html'">log in</button>
+
+<style>
+  .back-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 10px 18px;
+    background-color: #04686bec;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 16px;
+    width: auto;
+    height: auto;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: background-color 0.3s;
+    z-index: 10;
+  }
+  .back-btn:hover {
+    background-color: #2b5634;
+  }
+</style>
+    <div class="container">
+        <h1>Faculty Directory</h1>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search by name, department, or email...">
+            <button onclick="performSearch()" class="search-btn">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+
+        <table id="facultyTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>courses taught</th>
+                    <th>field of SPecialty</th>
+                    <th>professional interests</th>
+                    
+                </tr>
+            </thead>
+            <tbody id="facultyBody">
+               <!--علشان اخدالبيانات من الباك-->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="C:\Users\user\Downloads\flask\static\scriptfaculty.js"></script>
+</body>
+</html>

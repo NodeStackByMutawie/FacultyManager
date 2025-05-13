@@ -1,0 +1,376 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Faculty Directory</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f7fa;
+      color: #2c3e50;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #34495e;
+      margin-bottom: 30px;
+    }
+
+    h3 {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    input[type="text"], input[type="password"] {
+      padding: 10px;
+      margin: 5px 0 15px;
+      width: 100%;
+      max-width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: block;
+    }
+
+    button {
+      padding: 10px 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      margin-right: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    div {
+      margin-bottom: 25px;
+    }
+
+    hr {
+      margin: 30px 0;
+      border: none;
+      height: 1px;
+      background-color: #ccc;
+    }
+
+    #facultyList > div {
+      background-color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    #loginMsg, #errorMsg {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    #loginMsg.success {
+      color: green;
+    }
+
+    #loginMsg.error, #errorMsg {
+      color: red;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Faculty Staff Directory</h1>
+
+  <div>
+    <h3>Login as Admin</h3>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="logout()">Logout</button>
+    <p id="loginMsg"></p>
+  </div>
+
+  <hr>
+
+  <div>
+    <h3>Search Faculty</h3>
+    <input type="text" id="searchName" placeholder="Name">
+    <button onclick="searchFaculty()">Search</button>
+  </div>
+
+  <hr>
+
+  <div id="facultyList"></div>
+
+  <hr>
+
+  <div id="addFacultySection" class="hidden">
+    <h3>Add Faculty Member (Admin Only)</h3>
+    <input type="text" id="name" placeholder="Name">
+    <input type="text" id="department" placeholder="Department">
+    <input type="text" id="coursesTaught" placeholder="Courses">
+    <input type="text" id="fieldsOfSpeciality" placeholder="Specialties">
+    <input type="text" id="professionalInterests" placeholder="Interests">
+    <button onclick="addFaculty()">Add Faculty</button>
+    <p id="errorMsg"></p>
+  </div>
+
+  <script>
+    const api = 'http://localhost:5000';
+    const headers = { "Content-Type": "application/json" };
+    const options = { credentials: 'include' };
+    let isAdmin = false;
+
+    function checkAuth() {
+      fetch(`${api}/check-auth`, options)
+        .then(res => res.json())
+        .then(data => {
+          isAdmin = data.isAdmin;
+          toggleAdminFeatures();
+          loadFaculty();
+        })
+        .catch(err => {
+          console.error('Error checking auth:', err);
+          isAdmin = false;
+          toggleAdminFeatures();
+          loadFaculty();
+        });
+    }
+
+    function toggleAdminFeatures() {
+      const addFacultySection = document.getElementById('addFacultySection');
+      if (addFacultySection) {
+        addFacultySection.className = isAdmin ? '' : 'hidden';
+      }
+    }
+
+    function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const loginMsg = document.getElementById('loginMsg');
+
+      if (!loginMsg) {
+        console.error('Element with ID loginMsg not found.');
+        return;
+      }
+
+      if (!username || !password) {
+        loginMsg.className = 'error';
+        loginMsg.innerText = 'Please enter both username and password.';
+        return;
+      }
+
+      const data = { username, password };
+      fetch(`${api}/login`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(data)
+      })
+        .then(res => res.json().then(data => ({ res, data })))
+        .then(({ res, data }) => {
+          loginMsg.className = res.ok ? 'success' : 'error';
+          loginMsg.innerText = data.message;
+          isAdmin = data.isAdmin;
+          toggleAdminFeatures();
+          if (res.ok) loadFaculty();
+        })
+        .catch(err => {
+          loginMsg.className = 'error';
+          loginMsg.innerText = 'Error connecting to server.';
+        });
+    }
+
+    function logout() {
+      const loginMsg = document.getElementById('loginMsg');
+
+      if (!loginMsg) {
+        console.error('Element with ID loginMsg not found.');
+        return;
+      }
+
+      fetch(`${api}/logout`, {
+        method: 'POST',
+        ...options
+      })
+        .then(res => res.json())
+        .then(data => {
+          loginMsg.className = 'success';
+          loginMsg.innerText = data.message;
+          isAdmin = data.isAdmin;
+          toggleAdminFeatures();
+          loadFaculty();
+        })
+        .catch(err => {
+          loginMsg.className = 'error';
+          loginMsg.innerText = 'Error connecting to server.';
+        });
+    }
+
+    function loadFaculty() {
+      fetch(`${api}/faculty`)
+        .then(res => res.json())
+        .then(data => {
+          const list = data.map(m => `
+            <div>
+              <b>${m.name}</b> - ${m.department}
+              <br>Courses: ${m.coursesTaught}
+              <br>Specialties: ${m.fieldsOfSpeciality}
+              <br>Interests: ${m.professionalInterests}
+              <br>ID: ${m.id}
+              ${isAdmin ? `<button onclick="deleteFaculty('${m.id}')">Delete</button>` : ''}
+            </div>
+          `).join('');
+          document.getElementById('facultyList').innerHTML = list;
+        })
+        .catch(err => {
+          document.getElementById('facultyList').innerHTML = '<p class="error">Error loading faculty list.</p>';
+        });
+    }
+
+    function searchFaculty() {
+      const name = document.getElementById('searchName').value.trim();
+      if (!name) {
+        alert('Please enter a name to search.');
+        return;
+      }
+
+      fetch(`${api}/faculty/search`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name })
+      })
+        .then(res => res.json())
+        .then(data => {
+          const list = data.map(m => `
+            <div>
+              <b>${m.name}</b> - ${m.department}
+              <br>Courses: ${m.coursesTaught}
+              <br>Specialties: ${m.fieldsOfSpeciality}
+              <br>Interests: ${m.professionalInterests}
+            </div>
+          `).join('');
+          document.getElementById('facultyList').innerHTML = list;
+        })
+        .catch(err => {
+          document.getElementById('facultyList').innerHTML = '<p class="error">Error searching faculty.</p>';
+        });
+    }
+
+    function addFaculty() {
+      const errorMsg = document.getElementById('errorMsg');
+      if (!errorMsg) {
+        console.error('Element with ID errorMsg not found.');
+        return;
+      }
+
+      const data = {
+        name: document.getElementById('name').value.trim(),
+        department: document.getElementById('department').value.trim(),
+        coursesTaught: document.getElementById('coursesTaught').value.trim(),
+        fieldsOfSpeciality: document.getElementById('fieldsOfSpeciality').value.trim(),
+        professionalInterests: document.getElementById('professionalInterests').value.trim()
+      };
+
+      // Validate inputs
+      for (const [key, value] of Object.entries(data)) {
+        if (!value) {
+          errorMsg.innerText = `Please fill in the ${key} field.`;
+          return;
+        }
+      }
+
+      fetch(`${api}/faculty`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(data)
+      })
+        .then(res => res.json().then(data => ({ res, data })))
+        .then(({ res, data }) => {
+          if (res.ok) {
+            errorMsg.innerText = '';
+            alert(data.message);
+            loadFaculty();
+            // Clear input fields
+            document.getElementById('name').value = '';
+            document.getElementById('department').value = '';
+            document.getElementById('coursesTaught').value = '';
+            document.getElementById('fieldsOfSpeciality').value = '';
+            document.getElementById('professionalInterests').value = '';
+          } else {
+            errorMsg.innerText = data.message;
+          }
+        })
+        .catch(err => {
+          errorMsg.innerText = 'Error connecting to server.';
+        });
+    }
+
+    function deleteFaculty(id) {
+      if (!confirm('Are you sure you want to delete this faculty member?')) return;
+
+      fetch(`${api}/faculty/${id}`, {
+        method: 'DELETE',
+        ...options
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+          loadFaculty();
+        })
+        .catch(err => {
+          alert('Error connecting to server.');
+        });
+    }
+
+    // Initialize page
+    checkAuth();
+  </script>
+</body>
+</html>
